@@ -1,0 +1,112 @@
+SDK_DIR ?= /srv/armv7-thumb-min-debug/root/VGLite
+
+.phony: all install
+
+all:  test_cases
+
+test_cases:
+	@$(MAKE) -C clear_dl
+	@$(MAKE) -C gfx1
+	@$(MAKE) -C gfx2
+	@$(MAKE) -C gfx3
+	@$(MAKE) -C gfx4
+	@$(MAKE) -C gfx6
+	@$(MAKE) -C gfx7
+	@$(MAKE) -C gfx8
+	@$(MAKE) -C gfx9
+	@$(MAKE) -C gfx10
+	@$(MAKE) -C gfx11
+	@$(MAKE) -C gfx15
+	@$(MAKE) -C gfx17
+	@$(MAKE) -C gfx18
+	@$(MAKE) -C gfx20
+	@$(MAKE) -C gfx21
+	@$(MAKE) -C gfx22
+	@$(MAKE) -C gfx23
+	@$(MAKE) -C gfx25
+	@$(MAKE) -C gfx28
+	@$(MAKE) -C gfx29
+	@$(MAKE) -C gfx30
+	@$(MAKE) -C gfx31
+	@$(MAKE) -C gfx32
+	@$(MAKE) -C greyridge
+	@$(MAKE) -C horizontal_dl
+	@$(MAKE) -C lossy1
+	@$(MAKE) -C r6_03
+	@$(MAKE) -C r6_10
+	@$(MAKE) -C renesas_perf_607
+	@$(MAKE) -C rgb2index
+	@$(MAKE) -C vertical_dl
+	@$(MAKE) -C worst1
+	@$(MAKE) -C worst2
+	@$(MAKE) -C worst2_comp
+	@$(MAKE) -C worst2_uncomp
+	@$(MAKE) -C worst3
+	@$(MAKE) -C worst3_comp
+	@$(MAKE) -C worst3_uncomp
+	@$(MAKE) -C worst4
+	@$(MAKE) -C worst5
+	@$(MAKE) -C worst5_comp
+	@$(MAKE) -C worst5_uncomp
+	@$(MAKE) -C worst6
+	@$(MAKE) -C worst6_comp
+	@$(MAKE) -C worst6_uncomp
+	@$(MAKE) -C worst7
+	@$(MAKE) -C yuv_converters
+
+install: all $(SDK_DIR)/samples
+	@cp -rf bin/* $(SDK_DIR)/samples
+
+clean:
+	@rm -rf bin
+	@$(MAKE) -C clear_dl clean
+	@$(MAKE) -C gfx1 clean
+	@$(MAKE) -C gfx2 clean
+	@$(MAKE) -C gfx3 clean
+	@$(MAKE) -C gfx4 clean
+	@$(MAKE) -C gfx6 clean
+	@$(MAKE) -C gfx7 clean
+	@$(MAKE) -C gfx8 clean
+	@$(MAKE) -C gfx9 clean
+	@$(MAKE) -C gfx10 clean
+	@$(MAKE) -C gfx11 clean
+	@$(MAKE) -C gfx15 clean
+	@$(MAKE) -C gfx17 clean
+	@$(MAKE) -C gfx18 clean
+	@$(MAKE) -C gfx20 clean
+	@$(MAKE) -C gfx21 clean
+	@$(MAKE) -C gfx22 clean
+	@$(MAKE) -C gfx23 clean
+	@$(MAKE) -C gfx25 clean
+	@$(MAKE) -C gfx28 clean
+	@$(MAKE) -C gfx29 clean
+	@$(MAKE) -C gfx30 clean
+	@$(MAKE) -C gfx31 clean
+	@$(MAKE) -C gfx32 clean
+	@$(MAKE) -C greyridge clean
+	@$(MAKE) -C horizontal_dl clean
+	@$(MAKE) -C lossy1 clean
+	@$(MAKE) -C r6_03 clean
+	@$(MAKE) -C r6_10 clean
+	@$(MAKE) -C renesas_perf_607 clean
+	@$(MAKE) -C rgb2index clean
+	@$(MAKE) -C vertical_dl clean
+	@$(MAKE) -C worst1 clean
+	@$(MAKE) -C worst2 clean
+	@$(MAKE) -C worst2_comp clean
+	@$(MAKE) -C worst2_uncomp clean
+	@$(MAKE) -C worst3 clean
+	@$(MAKE) -C worst3_comp clean
+	@$(MAKE) -C worst3_uncomp clean
+	@$(MAKE) -C worst4 clean
+	@$(MAKE) -C worst5 clean
+	@$(MAKE) -C worst5_comp clean
+	@$(MAKE) -C worst5_uncomp clean
+	@$(MAKE) -C worst6 clean
+	@$(MAKE) -C worst6_comp clean
+	@$(MAKE) -C worst6_uncomp clean
+	@$(MAKE) -C worst7 clean
+	@$(MAKE) -C yuv_converters clean
+
+$(SDK_DIR)/samples:
+	@mkdir -p $(SDK_DIR)/samples

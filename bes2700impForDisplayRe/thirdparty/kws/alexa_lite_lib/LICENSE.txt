@@ -1,0 +1,7 @@
+Copyright 2017-2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+These materials are licensed as “Restricted Program Materials” under the Program Materials License Agreement (the “Agreement”) in connection with the Alexa Voice Service Program. The Agreement is available at https://developer.amazon.com/support/legal/pml. See the Agreement for the specific terms and conditions of the Agreement. Capitalized terms not defined in this file have the meanings given to them in the Agreement.
+
+In addition to the terms and conditions of the Agreement, the following terms and conditions (“Additional Terms” and collectively with the Agreement, the “Terms”) apply to these materials. In the event of a conflict between the terms and conditions of the Agreement and these Additional Terms, these Additional Terms will apply.
+
+1. Use of these materials requires implementation of either (i) AVS SDK Adapter for Wakeword or Wakeword Lite; or (ii) your own implementation of the AVS SDK Adapter for Wakeword or Wakeword Lite, including sending Wake Word Diagnostics Information (WWDI) or Wakeword detection metadata as a part of the Alexa Service API calls.  Please contact your AVS Solution Architect for more details.

@@ -1,0 +1,9 @@
+#OWNERS files owner
+per-file OWNERS = set noparent
+per-file OWNERS = ruimei@bestechnic.com
+per-file OWNERS = xiaopengding@bestechnic.com
+
+#all other files in this dir
+ruimei@bestechnic.com
+xiaopengding@bestechnic.com
+haoyeren@bestechnic.com

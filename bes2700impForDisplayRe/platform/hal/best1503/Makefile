@@ -1,0 +1,145 @@
+cur_dir := $(dir $(lastword $(MAKEFILE_LIST)))
+
+obj-y := $(patsubst $(cur_dir)%,%,$(wildcard $(cur_dir)*.c))
+obj-y := $(obj-y:.c=.o)
+
+ifeq ($(CAPSENSOR_ENABLE),1)
+CFLAGS_hal_capsensor_$(CHIP).o += -Iplatform/drivers/capsensor
+endif
+
+EXCLUDE_OBJS :=
+
+obj-y := $(filter-out $(EXCLUDE_OBJS),$(obj-y))
+
+ifeq ($(SENSOR_ENGINE_DEBUG),1)
+CFLAGS_hal_sensor_eng_$(CHIP).o += -DSENSOR_ENGINE_DEBUG
+endif
+
+ifeq ($(USB_CLK_SRC_PLL),1)
+CMU_CFG_FLAGS += -DUSB_CLK_SRC_PLL
+endif
+
+ifeq ($(AUDIO_USE_BBPLL),1)
+CMU_CFG_FLAGS += -DAUDIO_USE_BBPLL
+endif
+ifeq ($(AUDIO_USE_USBPLL),1)
+CMU_CFG_FLAGS += -DAUDIO_USE_USBPLL
+endif
+
+ifeq ($(SYS_USE_USBPLL),1)
+CMU_CFG_FLAGS += -DSYS_USE_USBPLL
+endif
+ifeq ($(SYS_USE_BBPLL),1)
+CMU_CFG_FLAGS += -DSYS_USE_BBPLL
+endif
+ifeq ($(SYS_USE_DSIPLL),1)
+CMU_CFG_FLAGS += -DSYS_USE_DSIPLL
+endif
+
+ifeq ($(FREQ_78M_USE_PLL),1)
+CMU_CFG_FLAGS += -DFREQ_78M_USE_PLL
+endif
+
+ifeq ($(RESAMPLE_CODEC_CLK_ANA),1)
+CMU_CFG_FLAGS += -DRESAMPLE_CODEC_CLK_ANA
+endif
+
+ifeq ($(SENSOR_HUB_MINIMA),1)
+CMU_CFG_FLAGS += -DSENSOR_HUB_MINIMA
+endif
+
+ifeq ($(MCU_I2C_SLAVE),1)
+CMU_CFG_FLAGS += -DMCU_I2C_SLAVE
+PSC_CFG_FLAGS += -DMCU_I2C_SLAVE
+endif
+
+ifeq ($(MCU_SPI_SLAVE),1)
+CMU_CFG_FLAGS += -DMCU_SPI_SLAVE
+IOMUX_CFG_FLAGS += -DMCU_SPI_SLAVE
+endif
+
+ifeq ($(SENS_I2S_DMA_ENABLE),1)
+CMU_CFG_FLAGS += -DSENS_I2S_DMA_ENABLE
+endif
+
+ifeq ($(SENS_CAP_SENS_DMA_ENABLE),1)
+CMU_CFG_FLAGS += -DSENS_CAP_SENS_DMA_ENABLE
+endif
+
+ifeq ($(BT_LOG_POWEROFF),1)
+CMU_CFG_FLAGS += -DBT_LOG_POWEROFF
+endif
+
+ifeq ($(BT_RCOSC_CAL),1)
+CMU_CFG_FLAGS += -DBT_RCOSC_CAL
+endif
+
+ifeq ($(SLOW_SYS_BYPASS),1)
+CMU_CFG_FLAGS += -DSLOW_SYS_BYPASS
+endif
+
+ifeq ($(DAC_CLASSG_ENABLE),1)
+CODEC_CFG_FLAGS += -DDAC_CLASSG_ENABLE
+endif
+
+ifeq ($(DAC_DRE_ENABLE),1)
+CODEC_CFG_FLAGS += -DDAC_DRE_ENABLE
+endif
+
+ifeq ($(PSAP_APP_ONLY_MUSIC),1)
+CODEC_CFG_FLAGS += -DPSAP_APP_ONLY_MUSIC
+endif
+
+ifeq ($(DAC_STOP_WITH_ZERO_CROSSING_MUTE),1)
+CODEC_CFG_FLAGS += -DDAC_STOP_WITH_ZERO_CROSSING_MUTE
+endif
+
+ifeq ($(INTPMU_IRQ_TO_SENS),1)
+PSC_CFG_FLAGS += -DINTPMU_IRQ_TO_SENS
+endif
+ifeq ($(WDT_IRQ_TO_SENS),1)
+PSC_CFG_FLAGS += -DWDT_IRQ_TO_SENS
+endif
+ifeq ($(EXTPMU_IRQ_TO_SENS),1)
+PSC_CFG_FLAGS += -DEXTPMU_IRQ_TO_SENS
+endif
+ifeq ($(CODEC_IRQ_TO_SENS),1)
+PSC_CFG_FLAGS += -DCODEC_IRQ_TO_SENS
+endif
+
+ifeq ($(JTAG_BT),1)
+PSC_CFG_FLAGS += -DJTAG_BT
+endif
+
+ifeq ($(JTAG_SENS),1)
+PSC_CFG_FLAGS += -DJTAG_SENS
+endif
+
+ifeq ($(JTAG_ENABLE),1)
+IOMUX_CFG_FLAGS += -DJTAG_ENABLE
+endif
+
+ifeq ($(JTAG_TDI_TDO_PIN),1)
+IOMUX_CFG_FLAGS += -DJTAG_TDI_TDO_PIN
+endif
+
+ifeq ($(JTAG_RESET_PIN),1)
+IOMUX_CFG_FLAGS += -DJTAG_RESET_PIN
+endif
+
+ifeq ($(CHARGER_1802),1)
+IOMUX_CFG_FLAGS += -DCHARGER_1802
+endif
+
+CFLAGS_hal_analogif_$(CHIP).o += $(ANAIF_CFG_FLAGS)
+
+CFLAGS_hal_cmu_$(CHIP).o += $(CMU_CFG_FLAGS)
+CFLAGS_hal_senscmu_$(CHIP).o += $(CMU_CFG_FLAGS)
+
+CFLAGS_hal_psc_$(CHIP).o += $(PSC_CFG_FLAGS)
+
+CFLAGS_hal_codec_$(CHIP).o += $(CODEC_CFG_FLAGS)
+CFLAGS_hal_vad_$(CHIP).o += $(CODEC_CFG_FLAGS)
+
+CFLAGS_hal_iomux_$(CHIP).o += $(IOMUX_CFG_FLAGS)
+

@@ -1,0 +1,95 @@
+
+
+
+1. sfss
+sfss is a tool running at pc host, it acta as a file system  stub server for the target system.
+it trans files bettwen target and host system. The images for gpu test are located at the host
+file sytem dirs , these files can not put into target storage space under some conditions.
+
+build step:
+sfss build from sfs_srv.c
+
+# g++ sfs_srv.c -g -lm -lpthread -o sfssb
+
+
+usage:
+
+sfss  /dev/ttyS0  921600  testcase_img_dir
+
+2. raw2raw
+rawtoraw is a tool used to scale rawfile into a new rawfile with the scale_rate,
+raw file format is defined by gpu test program. it is useful with less memory target
+
+build step:
+sfss build from rawtoraw.c
+# g++ -c -std=c++11 rawtoraw.c  -I/usr/local/include/opencv4 -lm -lopencv_core  -o raw2raw
+
+
+usage:
+
+raw2raw newrawname rawfile  scale_rate
+
+
+3. raw2fb
+rawtofb is a tool used to write rawfile into a fbfile with the scale_rate,
+raw file comes from gpu test program
+
+build step:
+rawtofb build from rawtofb.c
+
+# g++ -c -std=c++11 rawtofb.c  -I/usr/local/include/opencv4 -lm -lopencv_core  -o raw2fb
+
+usage:
+   rawtofb fbfilename rawfile  scale_rate
+
+
+
+4. raw2png
+rawtopng is a tool used to write rawfile into a png format file,
+
+raw file comes from gpu test program.
+
+build step:
+raw2png build from rawtopng.c
+# g++  rawtopng.c  -I/usr/local/include/opencv4 -lm -lopencv_core  -lpng -o raw2png
+
+usage:
+   raw2png pngfilename rawfile
+
+5. fb2bmp
+fb2png is a tool used to write fbbits file into bmp formated image file,
+fbbits file is the screan fb memory dump file.
+
+build step:
+fb2bmp  build from fbtobm.c
+
+# g++ -c -std=c++11 fbtobm.c  -I/usr/local/include/opencv4 -lm -lopencv_core  -o fb2bmp
+
+usage:
+   fb2bmp bmpfilename fbbitsfile width height  colorbits
+
+6. fb2png
+fb2png is a tool used to write fbbits file into png formated image file,
+fbbits file is the screan fb memory dump file.
+
+
+build step:
+fb2png  build from fbtopng.c
+
+g++  fbtopng.c  -I/usr/local/include/opencv4 -lm -lopencv_core -lpng -o fb2png
+
+usage:
+   fb2png pngfilename fbbitsfile width height
+
+7. cvshow
+cvshow is a tool used to show image files(png,bmp)
+
+build step:
+cvshow  build from cvshow.c
+g++ -c -std=c++11 cvshow.c  -I/usr/local/include/opencv4 -lm -lopencv_core  -o cvshow
+
+usage:
+   cvshow  image_filename
+
+
+NOTE: raw2png supports ABGR8888 color format only currently

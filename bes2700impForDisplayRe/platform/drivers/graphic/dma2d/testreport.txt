@@ -1,0 +1,25 @@
+/*dma2d clk 40M */
+
+1. fill rect
+// putreg32(0x501000, DMA2D_STBY_VSYNCCR);     //sram clear454*x454  3ms
+// putreg32(0x501400, DMA2D_STBY_VSYNCCR);     //psram clear454*x454 9ms
+// putreg32(0x501200, DMA2D_STBY_VSYNCCR);     //psram clear454*x454 5ms  no psram wrap
+// putreg32(0x501040, DMA2D_STBY_VSYNCCR);     //psram clear64*x64  <1ms   no psram wrap
+
+2. bilt
+//  putreg32(0x501100, DMA2D_STBY_VSYNCCR);    // sram blit454*x454   5ms
+//  putreg32(0x501b00, DMA2D_STBY_VSYNCCR);    // psram blit454*x454  21ms
+//  putreg32(0x501400, DMA2D_STBY_VSYNCCR);    // psram to psram blit454*x454  11ms  no psram wrap
+//  putreg32(0x501200, DMA2D_STBY_VSYNCCR);    // psram to sram blit454*x454  6ms no psram wrap
+3. blend
+//  putreg32(0x501ff0, DMA2D_STBY_VSYNCCR);    // psram blend454*x454 31ms    psram wrap
+//  putreg32(0x501700, DMA2D_STBY_VSYNCCR);    // psram blend454*x454 15ms    no psram wrap
+//  putreg32(0x501400, DMA2D_STBY_VSYNCCR);    // sram blend454*x454  9ms
+
+
+
+
+//fps:
+// 15 blend454*x454(psram+psram -> psram)     max 50 fps
+// 6 blit(psram->sram) + 3 dsi                max 100fps
+// 11 blit(psram->psram) + 9dsi               max 50-100fps

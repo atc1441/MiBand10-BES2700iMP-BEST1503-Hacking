@@ -1,0 +1,8 @@
+{
+  "alexa": {
+    "en-US": [
+      "common/WR_250k.en-US.alexa",
+      "common/WS_50k.en-US.alexa"
+    ]
+  }
+}

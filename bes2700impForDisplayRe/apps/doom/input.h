@@ -1,0 +1,2 @@
+
+void input_init();

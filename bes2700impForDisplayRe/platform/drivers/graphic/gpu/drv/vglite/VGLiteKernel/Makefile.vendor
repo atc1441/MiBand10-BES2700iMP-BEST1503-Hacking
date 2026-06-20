@@ -1,0 +1,50 @@
+##############################################################################
+#
+#    Copyright (c) 2005 - 2020 by Vivante Corp.  All rights reserved.
+#
+#    The material in this file is confidential and contains trade secrets
+#    of Vivante Corporation. This is proprietary information owned by
+#    Vivante Corporation. No part of this work may be disclosed,
+#    reproduced, copied, transmitted, or used in any way for any purpose,
+#    without the express written permission of Vivante Corporation.
+#
+##############################################################################
+
+
+
+OBJS = linux/vg_lite_hal.o vg_lite_kernel.o
+
+ifeq ($(DEBUG), 1)
+EXTRA_CFLAGS += -g -g -O0 -DDEBUG -D_DEBUG
+else
+EXTRA_CFLAGS += -O2
+endif
+
+ifeq ($(KERNELRELEASE),)
+
+ARCH ?= arm
+KERNEL_DIR ?= /opt/linux-2.6.38-imx
+CROSS_COMPILE ?= ~/CodeSourcery/bin/arm-none-linux-gnueabi-
+PWD = $(shell pwd)
+OUT = ../bin
+
+all: $(OUT)
+	@mkdir -p out
+	@$(MAKE) -C $(KERNEL_DIR) M=$(PWD) ARCH=$(ARCH) CROSS_COMPILE=$(CROSS_COMPILE) V=$(V) modules
+	@cp out/vg_lite.ko $(OUT)
+
+clean:
+	@rm -fr $(OBJS) *.o vg_lite.ko .*.cmd modules.order Module.symvers vg_lite.mod.c .tmp_versions out $(OUT)/vg_lite.ko
+	@rm -f ./linux/.*.cmd
+
+$(OUT):
+	@mkdir -p $(OUT)
+
+else
+
+obj-m := out/vg_lite.o
+out/vg_lite-objs := $(OBJS)
+
+EXTRA_CFLAGS += -I$(M)/../inc -I$(M)/linux -I$(M)
+
+endif

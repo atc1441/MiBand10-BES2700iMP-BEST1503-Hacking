@@ -1,0 +1,18 @@
+#### CAP CONFIG ######
+export CAPSENSOR_AT_MCU ?= 0
+
+export CHIP_CAPSENSOR_VER ?= 3
+
+export CAPSENSOR_IZC_PACKAGE ?= 1
+
+export CAPSENSOR_TOUCH ?= 0
+
+export CAPSENSOR_WEAR ?= 0
+
+export CAPSENSOR_SLIDE ?= 0
+
+export CAPSENSOR_TRACE_DEBUG ?= 0
+
+export CAPSENSOR_SPP_SERVER ?= 0
+
+export CAPSENSOR_WEAR_USE_ONE_PAD ?= 0

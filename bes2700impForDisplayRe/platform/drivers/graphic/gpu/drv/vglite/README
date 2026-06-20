@@ -1,0 +1,87 @@
+Prerequisite
+
+    VeriSilicon VGLite driver/cmodel source code requires VS2012 (Microsoft Visual Studio 11.0) to build properly.
+    The VGLite driver/cmodel source code may have build issues with the later versions of Microsoft Visual Studio.
+    VGLite driver/cmodel VS2012 solution/projects only support WIN32 build target (X64 build target not supported).
+
+Build Instructions on Windows
+
+  1. Modify "vglite_hubi.bat" file to set CMODEL and SAMPLES to the correct local directores.
+
+         CMODEL needs to point to the directory containing files from VIVANTE_VGLite_Lib_Cmodel_x.y.z.tgz package.
+         SAMPLES needs to point to the directory containing files from VIVANTE_VGLite_Src_tst_x.y.z.tgz package.
+
+  2. Run "vglite_hubi.bat" to launch VS2012 IDE for VGLite driver and VGLite samples.
+
+  3. Build "VGLiteKernel" project first in the "VGLite" solution.
+
+         Select project "VGLiteKernel" -> Rebuild
+
+     The VGLite kernel library "VGLiteKernel.dll" will be generated in "BUILD_vgHuBi/bin" directory.
+
+     Note: To resolve the link error "cannot open file BUILD_vgHuBi\lib\aqCmodel.lib", copy the pre-built
+     "aqCmodel.lib" (corresponding to the current build target) from:
+
+         %CMODEL%\lib\Debug\aqCmodel.lib
+      or
+         %CMODEL%\lib\Release\aqCmodel.lib
+
+      to "BUILD_vgHuBi\lib\" directory, then select "Build" to build "VGLiteKernel.dll" sucessfully.
+
+  4. Build "VGLite" project in the "VGLite" solution.
+
+         Select project "VGLite" -> Build
+
+     The VGLite API driver library "vg_lite.dll" will be generated in "BUILD_vgHuBi/bin" directory.
+
+  5. After VGLite driver is built, "VGLite_Samples" solution can be built.
+     "vg_lite_util" project is required to be built first. Then other VGLite samples can be built.
+
+         Select project "vg_lite_util" -> Rebuild
+         Select project "clear" -> Build
+         Select project "paternFill" -> Build
+         ......
+
+  6. The built VGLite samples can run with VGLite API driver libraries in VS2012 IDE.
+     Each VGLite sample will generate a PNG image file which shows the rendering result in %SAMPLES%\windows\testname
+     directory after the sample runs complete.
+
+     For example, sample "paternFill" will generate a "paternFill.png" file in "%SAMPLES%\windows\paternFill" directory.
+
+Build Instructions on Linux
+
+  1. Create a folder include drv and src,for example "vglite":
+
+         The folder structure is as follows:
+         --vglite
+           |--drv
+           |--tst
+         Unzip VIVANTE_VGLite_Src_drv_x.y.z.tgz package to folder drv.
+         Unzip VIVANTE_VGLite_Src_tst_x.y.z.tgz package to folder tst.
+         Move drv/patch to vglite/.
+
+  2. Patch driver and test code.
+
+         Enter the folder vglite:
+         "patch -p1< patch/0001-support-linux-5.10.patch"
+         "patch -p1< patch/0001-support-hardware-GC355.patch"
+
+  3. build driver and test.
+
+         Enter the folder drv: "build_sample.sh install"
+         Enter the folder tst: "build_sample.sh install"
+         After the above two steps,the folder build.imx6q30 will be generated under folder vglite.The folder structure is as 
+         follows:
+         --build.imx6q30
+           |--sdk
+              |--drivers
+              |--inc
+              |--samples
+  4.run case on IMX6Q*
+
+         Enter the folder build.imx6q30/sdk/drivers,and run followint commands:
+         "cp ../samples/libvg_lite_util.so ./
+          insmod vglite.ko
+          export LD_LIBRARY_PATH=`pwd`:$LD_LIBRARY_PATH"
+         Enter the folder build.imx6q30/sdk/samples,choose a case to run,such as clear:
+         "./clear"

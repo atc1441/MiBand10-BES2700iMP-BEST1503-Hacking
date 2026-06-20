@@ -1,0 +1,4 @@
+LIBRARY VGLiteKernel
+
+EXPORTS
+    vg_lite_kernel

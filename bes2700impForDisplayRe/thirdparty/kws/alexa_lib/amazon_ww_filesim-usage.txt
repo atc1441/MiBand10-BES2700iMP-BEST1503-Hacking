@@ -1,0 +1,26 @@
+The enclosed binary is a .wav file processor for the Amazon Wakeword Engine. A text file containing
+a list of .wav files must be supplied.  The Wakeword Engine will process all files in the list.
+
+If you have a directory containing the .wav files to process, run the following command to generate
+a list file with all the .wav files in that directory:
+
+ls -1 *.wav > all_wavs.list
+
+Then run the simulator:
+
+./amazon_ww_filesim -m <path_to_model> all_wavs.list
+
+If the Wakeword Engine executable binary is compatible only with a specific model type, it will be
+suffixed with a letter denoting the type (-D, -B, -U).  The models are prefixed with the same letter.
+If the Wakeword Engine is compatible with all models, the type suffix will be absent.
+
+The wakeword engine uses adaptation logic to learn the characteristics of the acoustic environment. This improves
+detection quality. However if the audio clips are from different environments and do not contain at least 1 second of
+background noise prior to the wakeword, we suggest using -c which will cause the engine to clear the adaptation stats
+after each file.
+
+Sample .wav files, .list file and output from the included .wav file processor can be found in the sample-wakeword folder.
+
+For a full list of of options, run amazon_ww_filesim with '-h'.
+
+

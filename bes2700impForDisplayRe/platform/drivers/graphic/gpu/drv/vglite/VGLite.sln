@@ -1,0 +1,68 @@
+
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VGLite", "VGLite.vcxproj", "{2761D56F-A956-4346-881B-2AD172C390D9}"
+	ProjectSection(ProjectDependencies) = postProject
+		{F753805E-261B-4CEA-B12C-6DC110A6B34D} = {F753805E-261B-4CEA-B12C-6DC110A6B34D}
+		{63ABDE63-4B42-49C8-B09A-46154F977F9F} = {63ABDE63-4B42-49C8-B09A-46154F977F9F}
+		{A7369AF6-D069-4B63-B995-F770ED4B2CBB} = {A7369AF6-D069-4B63-B995-F770ED4B2CBB}
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "hw", "hw", "{2AD2823D-1B38-4058-8978-A8C2B0FDEA95}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VGLiteKernel", "VGLiteKernel\win32\win32.vcxproj", "{F753805E-261B-4CEA-B12C-6DC110A6B34D}"
+	ProjectSection(ProjectDependencies) = postProject
+		{63ABDE63-4B42-49C8-B09A-46154F977F9F} = {63ABDE63-4B42-49C8-B09A-46154F977F9F}
+		{A7369AF6-D069-4B63-B995-F770ED4B2CBB} = {A7369AF6-D069-4B63-B995-F770ED4B2CBB}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VG Cmodel", "arch\GC350\cmodel\cmodel.2012.vcxproj", "{A7369AF6-D069-4B63-B995-F770ED4B2CBB}"
+	ProjectSection(ProjectDependencies) = postProject
+		{63ABDE63-4B42-49C8-B09A-46154F977F9F} = {63ABDE63-4B42-49C8-B09A-46154F977F9F}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GC100 registers", "arch\GC350\reg\reg.2005.vcxproj", "{63ABDE63-4B42-49C8-B09A-46154F977F9F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Debug|x64 = Debug|x64
+		Release|Win32 = Release|Win32
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2761D56F-A956-4346-881B-2AD172C390D9}.Debug|Win32.ActiveCfg = Debug|Win32
+		{2761D56F-A956-4346-881B-2AD172C390D9}.Debug|Win32.Build.0 = Debug|Win32
+		{2761D56F-A956-4346-881B-2AD172C390D9}.Debug|x64.ActiveCfg = Debug|Win32
+		{2761D56F-A956-4346-881B-2AD172C390D9}.Release|Win32.ActiveCfg = Release|Win32
+		{2761D56F-A956-4346-881B-2AD172C390D9}.Release|Win32.Build.0 = Release|Win32
+		{2761D56F-A956-4346-881B-2AD172C390D9}.Release|x64.ActiveCfg = Release|Win32
+		{F753805E-261B-4CEA-B12C-6DC110A6B34D}.Debug|Win32.ActiveCfg = Debug|Win32
+		{F753805E-261B-4CEA-B12C-6DC110A6B34D}.Debug|Win32.Build.0 = Debug|Win32
+		{F753805E-261B-4CEA-B12C-6DC110A6B34D}.Debug|x64.ActiveCfg = Debug|Win32
+		{F753805E-261B-4CEA-B12C-6DC110A6B34D}.Release|Win32.ActiveCfg = Release|Win32
+		{F753805E-261B-4CEA-B12C-6DC110A6B34D}.Release|Win32.Build.0 = Release|Win32
+		{F753805E-261B-4CEA-B12C-6DC110A6B34D}.Release|x64.ActiveCfg = Release|Win32
+		{A7369AF6-D069-4B63-B995-F770ED4B2CBB}.Debug|Win32.ActiveCfg = Debug|Win32
+		{A7369AF6-D069-4B63-B995-F770ED4B2CBB}.Debug|Win32.Build.0 = Debug|Win32
+		{A7369AF6-D069-4B63-B995-F770ED4B2CBB}.Debug|x64.ActiveCfg = Debug|x64
+		{A7369AF6-D069-4B63-B995-F770ED4B2CBB}.Debug|x64.Build.0 = Debug|x64
+		{A7369AF6-D069-4B63-B995-F770ED4B2CBB}.Release|Win32.ActiveCfg = Release|Win32
+		{A7369AF6-D069-4B63-B995-F770ED4B2CBB}.Release|Win32.Build.0 = Release|Win32
+		{A7369AF6-D069-4B63-B995-F770ED4B2CBB}.Release|x64.ActiveCfg = Release|x64
+		{A7369AF6-D069-4B63-B995-F770ED4B2CBB}.Release|x64.Build.0 = Release|x64
+		{63ABDE63-4B42-49C8-B09A-46154F977F9F}.Debug|Win32.ActiveCfg = Debug|Win32
+		{63ABDE63-4B42-49C8-B09A-46154F977F9F}.Debug|Win32.Build.0 = Debug|Win32
+		{63ABDE63-4B42-49C8-B09A-46154F977F9F}.Debug|x64.ActiveCfg = Debug|Win32
+		{63ABDE63-4B42-49C8-B09A-46154F977F9F}.Release|Win32.ActiveCfg = Release|Win32
+		{63ABDE63-4B42-49C8-B09A-46154F977F9F}.Release|Win32.Build.0 = Release|Win32
+		{63ABDE63-4B42-49C8-B09A-46154F977F9F}.Release|x64.ActiveCfg = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{A7369AF6-D069-4B63-B995-F770ED4B2CBB} = {2AD2823D-1B38-4058-8978-A8C2B0FDEA95}
+		{63ABDE63-4B42-49C8-B09A-46154F977F9F} = {2AD2823D-1B38-4058-8978-A8C2B0FDEA95}
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,39 @@
+##############################################################################
+#
+#    Copyright (c) 2005 - 2020 by Vivante Corp.  All rights reserved.
+#
+#    The material in this file is confidential and contains trade secrets
+#    of Vivante Corporation. This is proprietary information owned by
+#    Vivante Corporation. No part of this work may be disclosed,
+#    reproduced, copied, transmitted, or used in any way for any purpose,
+#    without the express written permission of Vivante Corporation.
+#
+##############################################################################
+
+
+include ../../Makefile.def
+
+CROSS_COMPILE ?= ~/CodeSourcery/bin/arm-none-linux-gnueabi-
+OUT = ../../bin
+NAME = watch
+
+SOURCES = watch.c
+
+LIBS += vg_lite vg_lite_util
+CFLAGS += -I$(SDK_DIR)/inc -I../util
+LDFLAGS += -L$(SDK_DIR)/drivers -L$(OUT) $(addprefix -l,$(LIBS))
+
+all : $(OUT)/watch
+
+clean :
+	@rm -f $(OUT)/$(NAME)
+
+$(OUT) :
+	@mkdir $(OUT)
+
+$(OUT)/libvg_lite_util.so :
+	@make -C ../util
+
+$(OUT)/$(NAME) : $(OUT) $(SOURCES) $(OUT)/libvg_lite_util.so
+	@echo $(CC) $(CFLAGS) -o $@ $(SOURCES) $(LDFLAGS)
+	@$(CC) $(CFLAGS) -o $@ $(SOURCES) $(LDFLAGS)

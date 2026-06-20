@@ -1,0 +1,39 @@
+##############################################################################
+#
+#    Copyright (c) 2005 - 2020 by Vivante Corp.  All rights reserved.
+#
+#    The material in this file is confidential and contains trade secrets
+#    of Vivante Corporation. This is proprietary information owned by
+#    Vivante Corporation. No part of this work may be disclosed,
+#    reproduced, copied, transmitted, or used in any way for any purpose,
+#    without the express written permission of Vivante Corporation.
+#
+##############################################################################
+
+
+SDK_DIR       ?= /srv/armv7-thumb-min-debug/root/VGLite
+KERNEL_DIR    ?= /home/software/Linux/linux-2.6.29
+CROSS_COMPILE ?= /home/software/Linux/arm-2011.09/bin/arm-none-linux-gnueabi-
+CC            := $(CROSS_COMPILE)gcc
+
+DEBUG     ?= 0
+CPU_ARCH  ?= armv7-a
+FLOAT_ABI ?=
+
+ifneq ($(CPU_ARCH),0)
+CFLAGS += -march=$(CPU_ARCH)
+endif
+ifneq ($(FPU),)
+  CFLAGS += -mfpu=$(FPU)
+endif
+ifneq ($(FLOAT_ABI),)
+  CFLAGS += -mfloat-abi=$(FLOAT_ABI)
+endif
+
+CFLAGS += -std=c99 -Wall -Werror -fno-strict-aliasing
+
+ifeq ($(DEBUG), 1)
+CFLAGS += -g -g -O0 -DDEBUG -D_DEBUG
+else
+CFLAGS += -O2
+endif

@@ -1,0 +1,5 @@
+#!/bin/bash
+
+PARAM="-npro -kr -i4 -ts4 -nut -sob -l100 -ss -ncs -cp1"
+
+indent $PARAM "$@"

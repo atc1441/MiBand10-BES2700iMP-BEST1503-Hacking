@@ -1,0 +1,56 @@
+
+
+LIBRARY vg_lite
+
+EXPORTS
+    vg_lite_allocate
+    vg_lite_free
+    vg_lite_buffer_upload
+    vg_lite_map
+    vg_lite_unmap
+    vg_lite_clear
+    vg_lite_blit
+    vg_lite_init
+    vg_lite_close
+    vg_lite_draw
+    vg_lite_get_info
+    vg_lite_get_register
+    vg_lite_get_product_info
+    vg_lite_query_feature
+    vg_lite_finish
+    vg_lite_flush
+    vg_lite_init_path
+    vg_lite_clear_path
+    vg_lite_path_calc_length
+    vg_lite_path_append
+    vg_lite_set_CLUT
+    vg_lite_draw_pattern
+    vg_lite_init_grad
+    vg_lite_set_grad
+    vg_lite_update_grad
+    vg_lite_clear_grad
+    vg_lite_get_grad_matrix
+    vg_lite_draw_gradient
+    vg_lite_identity
+    vg_lite_translate
+    vg_lite_scale
+    vg_lite_rotate
+    vg_lite_perspective
+    vg_lite_blit_rect
+    vg_lite_blit2
+    vg_lite_upload_path
+    vg_lite_set_rad_grad
+    vg_lite_update_rad_grad
+    vg_lite_get_rad_grad_matrix
+    vg_lite_draw_radial_gradient
+    vg_lite_clear_rad_grad
+    vg_lite_set_image_global_alpha
+    vg_lite_set_dest_global_alpha
+    vg_lite_set_color_key
+    vg_lite_init_arc_path
+    vg_lite_disable_flexa
+    vg_lite_set_flexa_stop_frame
+    vg_lite_set_flexa_current_background_buffer
+    vg_lite_set_flexa_stream_id
+    vg_lite_enable_flexa
+    vg_lite_set_dither
