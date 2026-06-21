@@ -59,8 +59,8 @@ BAUD             = 921600
 PROG_PATH   = os.path.join(os.path.dirname(__file__), r"programmer.bin")
 PROG_HDR    = 0x620        # code data starts here; the trailing 4 B are not sent
 PROG_CRC_OFF = 0x61C       # CRC32 (field3) is taken from here to -4
-FLASH_BASE  = 0x2C000000   # XIP cached flash base
-FLASH_SIZE  = 0x400000     # 4 MB single die (confirmed: GET_FLASH_SIZE=4194304, FLASH_ID:1=00-00-00)
+FLASH_BASE  = 0x0C000000   # XIP cached flash base
+FLASH_SIZE  = 0x800000     # 4 MB single die (confirmed: GET_FLASH_SIZE=4194304, FLASH_ID:1=00-00-00)
 CHUNK_SIZE  = 0x1000       # 4 KB per FlashRead request
 
 CHUNK_RETRIES   = 10
