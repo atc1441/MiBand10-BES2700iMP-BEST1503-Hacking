@@ -9,7 +9,9 @@ This repository documents *what* the chip is, *where* the SDK came from, and
 flashed and actually run on the watch.
 ---
 
-This repo is made together with this explanation video:(click on it)
+This repo is made together with these explanation videos:(click on it)
+
+[![YoutubeVideo](https://img.youtube.com/vi/oFswl8FKiRo/0.jpg)](https://www.youtube.com/watch?v=oFswl8FKiRo)
 
 [![YoutubeVideo](https://img.youtube.com/vi/XdoPEcibQdg/0.jpg)](https://www.youtube.com/watch?v=XdoPEcibQdg)
 
@@ -29,8 +31,9 @@ This repo is made together with this explanation video:(click on it)
 * Flashing the watch - and the device pinout - was the single hardest part. It
   was solved using a separate leak of a BES flashing tool that happened to ship
   the SecondStage bootloader blobs for every BEST variant.
-* On top of the working firmware, **GBADoom** was ported. It boots, renders to
-  the AMOLED panel and is controlled through the touchscreen.
+* On top of the working firmware, **GBADoom** was ported. It boots, runs at
+  **~36 FPS in full 16-bit colour (RGB565)** over a **hardware Quad-SPI** display
+  path, and is controlled through the touchscreen.
 
 The SDK folder is named **`MiBand10_SDK_BES2700IMP_BEST1503_DOOM`**.
 
@@ -126,16 +129,35 @@ confirmed against a RAM dump of the running chip and is now reflected in
 
 ### Display - RM690B0/C0 AMOLED
 The panel is a Raydium **RM690B0/C0** AMOLED (≈212 × 520 visible). It is driven
-through the BES **LCDC SMPN** path as a 1-lane HW QSPI command stream:
+through the BES **LCDC SMPN** path as a **4-lane hardware Quad-SPI** command
+stream (`platform/main/disp_hwquad.c`, raw MMIO, no SDK calls):
 
-* the clock tree and pads are configured exactly as the stock firmware does;
-* a full panel init sequence (CASET/RASET, COLMOD, display-on, brightness) is
-  replayed;
-* frames are pushed as **8 bpp RGB332** (one byte per pixel) over the FIFO with
-  the `0x2C` / single-write opcode.
+* **Clock tree** - the display power island and clock multipliers are brought up
+  exactly as the stock firmware does. The stripped best1503 boot omits the
+  clock-tree module enables the LCDC's DMA master needs, so they are restored by
+  hand; the display clock is the **96 MHz OSC×4 tap**.
+* **Init** - the panel **RDID is read back** (`0xDA/0xDB/0xDC`) and used to
+  auto-select the matching variant (init table + CASET X-offset), falling back
+  to a default panel; a full init sequence (manufacturer page, COLMOD, MADCTL,
+  CASET/RASET, sleep-out, display-on, brightness) is then replayed over the
+  single-line command engine.
+* **Pixels** - frames are streamed by the LCDC **GEN_FRAME generator** as
+  **16 bpp RGB565** (two bytes per pixel) over all four data lanes, with the
+  hardware auto-head emitting the `0x32` / `0x2C` quad-write opcode. The write
+  window is set on the command engine first because the generator only emits the
+  `0x2C` RAMWR itself.
+* **Framing** - CS is driven manually around each transfer and held low until
+  the **TXC** (transmit-complete) gate so the panel commits the RAMWR; the
+  serializer is flushed and the SMPN re-armed every frame.
+* **Ping-pong double buffer** - the transfer runs in hardware (GRA-DMA +
+  serializer), so `disp_hwquad_start()` kicks a frame and returns; the CPU
+  renders the *other* buffer while one is in flight, and `disp_hwquad_wait()`
+  blocks on TXC before the swap.
 
-The whole display path was traced out of the stock firmware register-by-register
-and re-implemented from scratch in `platform/main/`.
+The whole display path was traced register-by-register out of the stock
+firmware (`vela_ota.bin` / `vela_ap.bin`, the **best1503** image - not the
+best1306 SDK) and re-implemented from scratch. The bring-up started on a 1-lane
+RGB332 FIFO path and was later upgraded to the full Quad-SPI RGB565 mode.
 
 ### Touch - Hynitron CST92xx
 The capacitive touch controller is a **Hynitron CST92xx** at I²C address `0x5A`,
@@ -160,15 +182,21 @@ What was done to make it run on the BEST1503:
   original board SDK; a small glue layer (`bes_glue.c`, `bes_compat.h`, `lcd.c`)
   bridges DOOM to the BES HAL.
 * **Display** - DOOM renders an 8 bpp palettised frame; `lcd.c` converts the
-  active palette to the panel's RGB332 with ordered (Bayer) dithering and blits
-  it to the centre of the AMOLED, with an on-screen control overlay drawn around
-  it.
+  active palette to the panel's **RGB565** (full 16-bit colour) and writes it
+  over the Quad-SPI path, running at **~36 FPS**. The watch is held in
+  **landscape**, so the 120 × 160 DOOM image is rotated 90° and scaled to
+  282 × 212 to fill the panel height, centred along the long axis with a control
+  strip painted once at each end (arrow keys / function keys).
 * **Input** - the touchscreen is mapped to DOOM: tap zones around the game image
   for movement/turn, the centre for fire, and on-screen buttons for use/menu.
-* **Timing** - DOOM's 35 Hz tick is derived from the BES system timer.
-* **Memory** - DOOM gets its own dedicated heap above the framebuffer; the
-  256 KB GBA reciprocal lookup table was dropped in favour of the Cortex-M33
-  hardware divider, saving flash.
+* **Timing** - DOOM's 35 Hz tick is derived from the BES system timer; a
+  once-per-second frame counter prints `DOOM FPS: N` straight to the trace UART
+  (polled, since once DOOM owns the CPU the SDK's buffered trace never flushes).
+* **Memory** - the two 212 × 520 RGB565 ping-pong buffers (220 KB each) sit at
+  the bottom of SRAM, and DOOM gets its own dedicated **248 KB arena above
+  them**; the linker keeps the system stack/pool below the framebuffers when
+  `DOOM=1`. The 256 KB GBA reciprocal lookup table was dropped in favour of the
+  Cortex-M33 hardware divider, saving flash.
 * The IWAD is embedded directly in flash and read in place (XIP).
 
 ---
@@ -208,7 +236,8 @@ Key build switches (`config/best1503/target.mk`):
 | --- | --- | --- |
 | SRAM | **1.4 MB** | corrected from the SDK's 512 KB |
 | Flash | **4 MB** | corrected from the SDK's 2 MB |
-| Framebuffer | 212 × 520, 8 bpp | shared panel buffer |
+| Framebuffer | 212 × 520, 16 bpp RGB565 | **2 ×** 220 KB ping-pong buffers (Quad-SPI) |
+| DOOM arena | 248 KB | dedicated heap above the framebuffers (`DOOM=1`) |
 
 The DOOM build drops the entire audio stack (codecs, audio processing, media
 player, the audio apps and services) because the watch has no audio hardware.
