@@ -11,6 +11,8 @@
 #include "hal_i2c.h"
 #include "hal_cmu.h"
 #include "hal_cache.h"
+#include "hal_sysfreq.h"
+#include "hal_uart.h"
 
 #define ST(...) TRACE(0, "[SELFTEST] " __VA_ARGS__)
 
@@ -1377,6 +1379,84 @@ static int i2c_probe(int addr7)
     return ack;
 }
 
+/* register read/write on top of the bit-bang primitives (8-bit reg, 8-bit data) */
+static int swi2c_rdreg(int addr7, uint8_t reg)   /* -1 on NAK */
+{
+    i2c_start();
+    if (i2c_wbyte((addr7 << 1) | 0)) { i2c_stop(); return -1; }
+    i2c_wbyte(reg);
+    i2c_start();                                   /* repeated start */
+    if (i2c_wbyte((addr7 << 1) | 1)) { i2c_stop(); return -1; }
+    unsigned v = i2c_rbyte(0);                      /* master-NAK the last byte */
+    i2c_stop();
+    return (int)(v & 0xFF);
+}
+static void swi2c_wrreg(int addr7, uint8_t reg, uint8_t val) __attribute__((unused));
+static void swi2c_wrreg(int addr7, uint8_t reg, uint8_t val)
+{
+    i2c_start();
+    i2c_wbyte((addr7 << 1) | 0);
+    i2c_wbyte(reg);
+    i2c_wbyte(val);
+    i2c_stop();
+}
+
+/* ===== EXTERNAL charger watchdog kill (the ~2.5 min global reset) ============
+ * Reversed from stock vela_ap: the charger sits on I2C *master 0*, whose pads are
+ * P0_0 (SCL) / P0_1 (SDA) = GPIO pins 0/1. Chip family hp4560x/cps6103/sc7061;
+ * chip-id is reg 0x0A (hp4560x = 0xE0). The WDT lives in reg 5 bits 0x60 and stock
+ * cps6103_set_wdt_en DISABLES it by clearing them (reg5 &= 0x9F).
+ *
+ * The SDK's hal_i2c can't reach it (NuttX skips pad-mux + master routing -> 15 s
+ * hang -> crash), so we bit-bang it as GPIO: every loop here is bounded, so it can
+ * never trip the 15 s hung-task watchdog. We SCAN the bus and read the chip-id so we
+ * only ever write reg 5 of the *verified* charger, never a wrong device. */
+static void charger_wdt_kill(void)
+{
+    ST("---- CHARGER WDT KILL (SW-I2C bit-bang P0_0=SCL / P0_1=SDA) ----");
+    i2c_pins_init(0, 1);                 /* GPIO0=SCL, GPIO1=SDA, internal pull-ups */
+
+    int chg = -1, id = -1;
+    for (int a = 0x03; a <= 0x77; a++) {
+        if (i2c_probe(a) != 0) continue;
+        int v = swi2c_rdreg(a, 0x02);            /* hp4560x chip-id lives in reg 0x02 (=0xE0) */
+        ST("  [i2c0] @0x%02X ACK  id(reg0x02)=0x%02X", a, v);
+        if (v == 0xE0 && chg < 0) { chg = a; id = v; }
+    }
+    if (chg < 0) { ST("  hp4560x charger (id 0xE0) NOT found on i2c0 -- WDT untouched"); return; }
+
+    /* WDT enable = reg 0x1B bit 0x80 (verified: reads 0xAB, bit set). Stock cps6103_set_wdt_en
+     * clears it to disable; some variants instead use reg 5 bits 0x60. Clear both, preserving
+     * every other bit, so the charger stops resetting the SoC (~2.5 min). */
+    int r1b = swi2c_rdreg(chg, 0x1B);
+    int r05 = swi2c_rdreg(chg, 0x05);
+    if (r1b >= 0) swi2c_wrreg(chg, 0x1B, (uint8_t)(r1b & ~0x80));
+    if (r05 >= 0) swi2c_wrreg(chg, 0x05, (uint8_t)(r05 & ~0x60));
+    int n1b = swi2c_rdreg(chg, 0x1B), n05 = swi2c_rdreg(chg, 0x05);
+    ST("  hp4560x @0x%02X id=0x%02X  WDT OFF: reg0x1B 0x%02X->0x%02X  reg0x05 0x%02X->0x%02X",
+       chg, id, r1b, n1b, r05, n05);
+}
+
+static void gpio_out_level(int pin, int level)
+{
+    iomux_set(pin, 0);
+    if (level) gpio_set(pin); else gpio_clr(pin);
+    gpio_dir_out(pin);
+}
+/* Power the auxiliary sensor/actuator rails so their bit-bang I2C buses come alive (reversed from
+ * stock persist_init_board):
+ *  - IMU/PPG on bus5 (P5_6/P5_7): rail enable = P3_6 (pin 30) HIGH.
+ *  - motor aw86225 on bus2 (P0_4/P0_5): enable = P1_2 (pin 10) HIGH, reset = P1_3 (pin 11) HIGH->LOW->HIGH. */
+static void sensor_power_on(void)
+{
+    gpio_out_level(30, 1);                                       /* IMU/PPG rail (P3_6) */
+    gpio_out_level(10, 1);                                       /* motor enable (P1_2) */
+    gpio_out_level(11, 1); hal_sys_timer_delay(MS_TO_TICKS(2));
+    gpio_clr(11);          hal_sys_timer_delay(MS_TO_TICKS(5));  /* motor reset assert  */
+    gpio_set(11);          hal_sys_timer_delay(MS_TO_TICKS(25)); /* release + settle    */
+    ST("  sensor rails ON: IMU P3_6 high, motor P1_2 high + P1_3 reset");
+}
+
 #define DISPLAY_WIDTH 212
 #define DISPLAY_HEIGHT 520
 /* === SINGLE shared full-screen framebuffer (stock-faithful) ==================
@@ -2387,6 +2467,134 @@ static void disp_init(void)
     LCDC_R(LCDC_SCLK_DIV) = 1;          /* SCLK = display(48MHz)/2 ~= 25MHz */
 }
 
+#ifdef DOOM
+/* ====================================================================== *
+ *  HW 4-LANE QUAD-SPI path for DOOM (driver: platform/main/disp_hwquad.c).
+ *
+ *  st_display_id() already powered the panel + PSC island + PLLs + the X-subsystem
+ *  clocks. Here we add what the GEN_FRAME DMA path needs that the 1-lane FIFO path
+ *  did not: the boot module HCLKs (disp_boot_clocks) + the LCDC sysfreq vote that
+ *  gives the DMA master the AXI bandwidth to keep the 96 MHz serializer fed, then run
+ *  the quad init (RDID -> variant init -> window). After this, lcd_render_fb() (lcd.c)
+ *  ping-pongs two RGB565 buffers through disp_hwquad_start()/disp_hwquad_wait().
+ * ====================================================================== */
+extern void disp_boot_clocks(void);
+extern void disp_hwquad_init(void);
+
+void doom_quad_bringup(void)
+{
+    static int done = 0;            /* the launcher page brings this up first; DOOM's re-call is a no-op */
+    if (done) return;
+    done = 1;
+    disp_boot_clocks();                                 /* module clocks for the GEN_FRAME DMA
+                                                         * (leaves the UART clocks intact) */
+    /* re-assert the X-subsystem clocks (disp_boot_clocks rewrites CMU) + raise AXI bandwidth */
+    static const enum HAL_CMU_MOD_ID_T xmods[] = {
+        HAL_CMU_MOD_X_AHB2, HAL_CMU_MOD_X_L2CC, HAL_CMU_MOD_X_VMMU,
+        HAL_CMU_MOD_X_GA2D, HAL_CMU_MOD_X_MISC, HAL_CMU_MOD_X_LCDC,
+    };
+    for (unsigned i = 0; i < sizeof(xmods) / sizeof(xmods[0]); i++) {
+        hal_cmu_clock_enable(xmods[i]); hal_cmu_reset_clear(xmods[i]);
+    }
+    hal_cmu_clock_enable(HAL_CMU_MOD_X_DISP); hal_cmu_reset_clear(HAL_CMU_MOD_X_DISP);
+    hal_cmu_clock_set_mode(HAL_CMU_MOD_X_LCDC, HAL_CMU_CLK_MANUAL);
+    hal_cmu_clock_set_mode(HAL_CMU_MOD_X_DISP, HAL_CMU_CLK_MANUAL);
+    hal_cmu_clock_set_mode(HAL_CMU_MOD_X_AHB2, HAL_CMU_CLK_MANUAL);
+    hal_sysfreq_req(HAL_SYSFREQ_USER_LCDC, HAL_CMU_FREQ_208M);
+
+    disp_hwquad_init();                                 /* PSC + 4-lane LCDC config + panel init */
+}
+
+/* Clean the framebuffer out of the D-cache so the LCDC DMA master sees the CPU's writes
+ * (the panel buffers live in SRAM/RAM4-5). Called by lcd.c before each quad send. */
+void doom_fb_flush(const void *p, unsigned bytes)
+{
+#if defined(__DCACHE_PRESENT) && (__DCACHE_PRESENT == 1U)
+    SCB_CleanDCache_by_Addr((uint32_t *)(uintptr_t)p, (int32_t)bytes);
+#endif
+    __DSB();
+}
+
+/* RGB565 control overlay, rendered ONCE into each ping-pong buffer (212x520). Mirrors the
+ * 8bpp doom_draw_ui() layout but writes 16bpp into the given buffer; the centred 120x160 game
+ * image (x46..165 y180..339) is left black and repainted every frame by lcd_render_fb(). */
+/* SIDEWAYS overlay helpers: draw in SCREEN coords (sx = screen horizontal = panel py 0..519,
+ * sy = screen vertical = panel px 0..211) so text reads upright when the watch is held rotated
+ * 90 deg. Maps to fb[sx*DISPLAY_WIDTH + sy]. The DOOM image band (sx 119..400) is left black and
+ * repainted by lcd.c; the LEFT strip (sx<119) and RIGHT strip (sx>=401) hold the controls. */
+static inline void q_spx(uint16_t *b, int sx, int sy, uint16_t c)
+{   /* sx -> panel py (long axis, MIRRORED), sy -> panel px. The py mirror turns the col->sx/row->sy
+     * transpose into a proper rotation (upright text) and matches the un-mirrored DOOM + touch. */
+    if ((unsigned)sx < DISPLAY_HEIGHT && (unsigned)sy < DISPLAY_WIDTH)
+        b[(DISPLAY_HEIGHT - 1 - sx) * DISPLAY_WIDTH + sy] = c;
+}
+static void q_stext(uint16_t *b, int sx, int sy, const char *s, uint16_t col, int sc)
+{
+    while (*s) {
+        unsigned int idx = (unsigned char)*s++; if (idx > 0xFE) idx = 0x20;
+        const unsigned char *bm = &font57[idx * 5];
+        for (int c = 0; c < 5; c++) {
+            unsigned char d = bm[c];
+            for (int r = 0; r < 8; r++) if (d & (1 << r))
+                for (int yy = 0; yy < sc; yy++) for (int xx = 0; xx < sc; xx++)
+                    q_spx(b, sx + c * sc + yy, sy + r * sc + xx, col);   /* q_spx mirrors sx (py) */
+        }
+        sx += 6 * sc;
+    }
+}
+static void q_shline(uint16_t *b, int sx0, int sx1, int sy, uint16_t c) { for (int s = sx0; s <= sx1; s++) q_spx(b, s, sy, c); }
+static void q_svline(uint16_t *b, int sx, int sy0, int sy1, uint16_t c) { for (int s = sy0; s <= sy1; s++) q_spx(b, sx, s, c); }
+static void q_srect(uint16_t *b, int sx0, int sy0, int sx1, int sy1, uint16_t c)
+{
+    q_shline(b, sx0, sx1, sy0, c); q_shline(b, sx0, sx1, sy1, c);
+    q_svline(b, sx0, sy0, sy1, c); q_svline(b, sx1, sy0, sy1, c);
+}
+void doom_ui_render565(uint16_t *b)
+{
+    for (int i = 0; i < DISPLAY_WIDTH * DISPLAY_HEIGHT; i++) b[i] = 0x0000;   /* black panel */
+
+    /* LEFT strip (sx 0..118) = arrow D-pad. screen top = sy 0, bottom = sy 211. */
+    q_srect(b,  2,   2, 116,  68, 0x07FFu); q_stext(b, 41,  28, "FWD",  0x07FFu, 2); /* up    */
+    q_srect(b,  2, 144, 116, 209, 0x07FFu); q_stext(b, 35, 170, "BACK", 0x07FFu, 2); /* down  */
+    q_srect(b,  2,  72,  56, 140, 0x07FFu); q_stext(b, 21,  99, "<",    0x07FFu, 2); /* left  */
+    q_srect(b, 62,  72, 116, 140, 0x07FFu); q_stext(b, 81,  99, ">",    0x07FFu, 2); /* right */
+
+    /* RIGHT strip (sx 401..519) = function keys. */
+    q_srect(b, 403,   2, 517, 118, 0xF800u); q_stext(b, 436,  53, "FIRE", 0xF800u, 2); /* fire */
+    q_srect(b, 403, 122, 517, 174, 0x07E0u); q_stext(b, 442, 141, "USE",  0x07E0u, 2); /* use  */
+    q_srect(b, 403, 178, 517, 209, 0xFFE0u); q_stext(b, 436, 187, "MENU", 0xFFE0u, 2); /* menu */
+
+    /* "loading..." centred in the game band (sx 119..400). Shown while DOOM inits (1-2 s); the
+     * first rendered frame (lcd_render_fb) repaints the band and overwrites it automatically. */
+    q_stext(b, 175, 96, "loading...", 0xFFFFu, 3);
+}
+
+/* Title over the top of the DOOM image (sy small = screen top). Drawn every frame by lcd.c
+ * AFTER the game blit so it stays on top (the game band is repainted each frame). */
+void doom_draw_title(uint16_t *b)
+{
+    q_stext(b, 158,  6, "DOOM on MiBand 10", 0xFFFFu, 2);
+    q_stext(b, 200, 26, "by ATC1441",        0xFFFFu, 2);
+}
+
+/* Called once per rendered frame from lcd.c; prints the frame rate to the trace UART each second.
+ * Once DOOM owns the CPU the SDK trace never flushes (its DMA/thread is starved) and an explicit
+ * hal_trace_flush_buffer() blocks -> hang. So write the line DIRECTLY to the trace UART with the
+ * polled blocking putc (UART1 = DEBUG_PORT 2 = COM24): synchronous, no DMA/thread, ~0.2 ms/line. */
+void doom_frame_tick(void)
+{
+    static uint32_t frames = 0, t0 = 0; static int inited = 0;
+    if (!inited) { t0 = hal_sys_timer_get(); inited = 1; }
+    frames++;
+    uint32_t now = hal_sys_timer_get();
+    if ((now - t0) >= MS_TO_TICKS(1000)) {
+        extern void am_util_stdio_printf(const char *fmt, ...);
+        am_util_stdio_printf("DOOM FPS: %lu\r\n", (unsigned long)frames);
+        frames = 0; t0 = now;
+    }
+}
+#endif /* DOOM */
+
 /* Live touch -> on-screen, ENTIRELY via HW QSPI (1-lane, FIFO single-write). No SW bit-bang. */
 static void st_touch_display_loop(void)
 {
@@ -2484,6 +2692,99 @@ static void st_swi2c_touch(void)
     hal_trace_flush_buffer();
     (void)st_touch_poll; /* touch input deferred — focus on display bring-up */
 }
+
+#ifdef DOOM
+/* ===== boot LAUNCHER page: live sensor dashboard + touch buttons =============
+ * A full-screen RGB565 page rendered (reusing the DOOM quad path + sideways text
+ * helpers) BEFORE handing off to DOOM. Tap PLAY DOOM to start the game; tap VIBRATE
+ * to pulse the aw86225 motor. Live data: charger hp4560x (bus0) + IMU @0x0E (bus5).
+ * Every I2C access is the bounded bit-bang and the loop osDelay()s each frame, so it
+ * can never trip the 15 s hung-task watchdog. */
+extern void disp_hwquad_start(const uint16_t *fb);
+extern void disp_hwquad_wait(void);
+
+__attribute__((unused)) static char *put_hex(char *p, unsigned v, int digits)
+{
+    static const char H[] = "0123456789ABCDEF";
+    for (int i = digits - 1; i >= 0; i--) { p[i] = H[v & 0xF]; v >>= 4; }
+    return p + digits;
+}
+__attribute__((unused)) static void rd_regs(int addr, uint8_t start, uint8_t *out, int n)
+{
+    for (int i = 0; i < n; i++) { int v = swi2c_rdreg(addr, (uint8_t)(start + i)); out[i] = (v < 0) ? 0xFF : (uint8_t)v; }
+}
+__attribute__((unused)) static char *put_int(char *p, int v)        /* signed decimal */
+{
+    if (v < 0) { *p++ = '-'; v = -v; }
+    char t[7]; int n = 0;
+    do { t[n++] = (char)('0' + v % 10); v /= 10; } while (v);
+    while (n) *p++ = t[--n];
+    return p;
+}
+/* touch reports panel px (tx 0..211) / py (ty 0..519); sideways screen is sx=519-ty, sy=tx. */
+static int in_rect(int tx, int ty, int sx0, int sy0, int sx1, int sy1)
+{
+    int sx = 519 - ty, sy = tx;
+    return sx >= sx0 && sx <= sx1 && sy >= sy0 && sy <= sy1;
+}
+/* best-effort aw86225 buzz: chip is already powered/reset by sensor_power_on(). Probe the
+ * 0x58..0x5B address block on bus2 and kick the RTP GO bit (reg 0x09). Crude -- refine later. */
+__attribute__((unused)) static int motor_buzz(void)
+{
+    i2c_pins_init(4, 5);                         /* bus2 = P0_4/P0_5 */
+    int addr = -1;
+    for (int a = 0x58; a <= 0x5B; a++) if (i2c_probe(a) == 0) { addr = a; break; }
+    if (addr < 0) { ST("  motor: aw86225 no ACK on bus2 (P0_4/P0_5)"); return -1; }
+    int id = swi2c_rdreg(addr, 0x00);
+    swi2c_wrreg(addr, 0x09, 0x01);               /* GO */
+    ST("  motor: aw86225 @0x%02X id=0x%02X kicked (GO)", addr, id);
+    return addr;
+}
+
+static void launcher_page(void)
+{
+    ST("==> LAUNCHER page (tap START DOOM)");
+    hal_trace_flush_buffer();
+    doom_quad_bringup();                          /* quad streaming up (guarded; DOOM re-call no-op) */
+    iomux_set(TOUCH_INT_PIN, 0); gpio_dir_in(TOUCH_INT_PIN); iomux_pullup(TOUCH_INT_PIN);
+
+    uint16_t *b = (uint16_t *)0x20080000u;        /* DOOM FB-A; DOOM repaints it after we exit */
+    int prev_down = 0;
+    for (;;) {
+        /* ---- render the info page (sideways: sx 0..519 horizontal, sy 0..211 vertical) ---- */
+        for (int i = 0; i < DISPLAY_WIDTH * DISPLAY_HEIGHT; i++) b[i] = 0x0000;
+        q_stext(b, 104, 18, "BES2700iMP",          0x07FFu, 3);   /* cyan title (clear of rounded corner) */
+        q_stext(b, 24,  56, "Reverse engineering", 0xFFFFu, 2);
+        q_stext(b, 24,  78, "by ATC1441",          0xFFE0u, 2);   /* yellow              */
+        q_stext(b, 24, 118, "full Quad SPI AMOLED", 0xFFFFu, 2);
+        q_stext(b, 24, 142, "Driving DOOM Player",  0x07E0u, 2);  /* green               */
+
+        /* single START DOOM button (right side, thick green border) */
+        q_srect(b, 312,  66, 506, 150, 0x07E0u);
+        q_srect(b, 313,  67, 505, 149, 0x07E0u);
+        q_srect(b, 314,  68, 504, 148, 0x07E0u);
+        q_stext(b, 348, 101, "START DOOM", 0x07E0u, 2);
+
+        doom_fb_flush(b, DISPLAY_WIDTH * DISPLAY_HEIGHT * 2);
+        disp_hwquad_start(b);
+        disp_hwquad_wait();
+
+        /* ---- touch ---- */
+        i2c_pins_init(6, 7);
+        int tx = 0, ty = 0, ev = 0;
+        int down = touch_read(&tx, &ty, &ev);
+        if (down && !prev_down) {
+            ST("  TAP px=%d py=%d", tx, ty);
+            if (in_rect(tx, ty, 312, 66, 506, 150)) { ST("  -> START DOOM"); break; }
+        }
+        prev_down = down;
+        osDelay(30);                                /* yield to scheduler (feeds the WDT) */
+    }
+    ST("==> launcher exit -> launching DOOM");
+    hal_trace_flush_buffer();
+}
+#endif /* DOOM */
+
 #define test_current_gpio_pin 46
 void hw_selftest(void)
 {
@@ -2519,6 +2820,9 @@ void hw_selftest(void)
     st_display_id();         /* bring up the RM690C0 panel (returns after init) */
 #ifdef DOOM
     /* GBADoom port (apps/doom/): panel is up, hand off to the game (never returns). */
+    charger_wdt_kill();      /* disable the external charger WDT (stops the ~2.5 min reset) */
+    sensor_power_on();       /* enable IMU/PPG (P3_6) + motor (P1_2/P1_3) rails */
+    launcher_page();         /* dashboard + touch buttons; returns when PLAY DOOM is tapped */
     { extern void doom_launch(void); ST("==> launching DOOM"); hal_trace_flush_buffer(); doom_launch(); }
 #endif
     st_touch_display_loop(); /* live touch -> on-screen crosshair + coordinates */

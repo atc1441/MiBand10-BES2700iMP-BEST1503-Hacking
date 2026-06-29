@@ -103,7 +103,9 @@ static memblock_t *blockbytag[PU_MAX];
 
 // 0 means unlimited, any other value is a hard limit
 //static int memory_size = 8192*1024;
-static int memory_size = 256*1024;
+// Capped to fit the 248 KB doom arena (bes_glue.c) alongside the 38 KB render fb + direct
+// mallocs, now that the display uses TWO full-panel RGB565 ping-pong buffers (apps/doom/lcd.c).
+static int memory_size = 200*1024;
 static int free_memory = 0;
 
 static int running_count = 0;

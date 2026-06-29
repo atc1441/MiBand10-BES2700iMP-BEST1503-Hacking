@@ -109,17 +109,23 @@ void initTheCustomIO()
 #define KEY_USE  KEYD_A      // open doors / switches + menu confirm (enter)
 #define KEY_MENU KEYD_START  // escape: open/close menu (and menu "back")
 
-// Tap-Zonen-Grenzen (Panel 212x520, Doom-Bild 1:1 zentriert -> x46-165, y180-339):
-//   y<ZONE_TOP_Y      -> START/Menü (ganz oben)
-//   above/below image -> vorwärts / rückwärts
-//   left/right of img -> links / rechts drehen
-//   on image (centre) -> Feuer (+Use)
-#define IMG_X0      46
-#define IMG_X1      165
-#define IMG_Y0      180
-#define IMG_Y1      339
-#define ZONE_TOP_Y  60
-#define PANEL_MID   106   // splits the area below the image into BACK (left) / USE (right)
+// SIDEWAYS (landscape) tap zones. Held rotated 90 deg: touch x = panel px (0..211, screen
+// vertical), touch y = panel py (0..519, screen horizontal). Layout (matches lcd.c + the overlay
+// in doom_ui_render565):
+//   y < LEFT_END           -> LEFT strip  = arrow D-pad (up/down/left/right)
+//   y >= RIGHT_START        -> RIGHT strip = function keys (FIRE/USE/MENU)
+//   in between (image band) -> tap to FIRE
+#define LEFT_END        119   // graphics: left control strip is drawn only up to py 118
+#define LEFT_TOUCH_END  210   // TOUCH ONLY: arrow zone reaches this far inward (into the image),
+                              //             without the buttons graphically covering the game
+#define RIGHT_START     401   // py >= 401 -> right control strip
+// LEFT strip D-pad (screen top=px0, bottom=px211; screen left=low py, right=high py):
+#define DPAD_UP_END      70   // px < 70           -> UP   (forward)
+#define DPAD_DOWN_START 142   // px >= 142         -> DOWN (back)
+#define DPAD_LR_MID      59   // middle band: py < 59 -> LEFT else RIGHT (turn)
+// RIGHT strip function keys (top->bottom by px):
+#define FN_FIRE_END     120   // px < 120          -> FIRE
+#define FN_USE_END      176   // px 120..175 -> USE, px >= 176 -> MENU
 
 // Empfindlichkeit
 #define SWIPE_DEADZONE 40 // Pixel-Distanz, die eine Berührung zurücklegen muss, um als "Swipe" zu gelten
@@ -230,17 +236,22 @@ void I_ProcessKeyEvents(void)
 	//    liegt -> Halten = Dauerbewegung / Dauerfeuer (kein Swipe mehr).
 	if (is_currently_touched)
 	{
-		int x = touch_x, y = touch_y;
-		if (y < ZONE_TOP_Y)                             // ganz oben: zwei Tasten nebeneinander
+		// the long (py) axis is mirrored in the render, so mirror the touch py to match.
+		int x = touch_x, y = 519 - touch_y;             // x=panel px (0..211), y=mirrored py
+		if (y < LEFT_TOUCH_END)                          // LEFT arrow zone (touch reaches into image)
 		{
-			if (x < PANEL_MID)       wants_menu = 1;    //   links  = START/Menü (Escape)
-			else                     wants_use  = 1;    //   rechts = USE (Menü-Enter, Spiel starten, Türen)
+			if (x < DPAD_UP_END)        wants_up    = 1; //   top    = vorwärts
+			else if (x >= DPAD_DOWN_START) wants_down = 1; // bottom = rückwärts
+			else if (y < DPAD_LR_MID)   wants_left  = 1; //   outer = links drehen
+			else                        wants_right = 1; //   inner = rechts drehen (reaches inward)
 		}
-		else if (y < IMG_Y0)         wants_up    = 1;   // über dem Bild  = vorwärts / Menü hoch
-		else if (y > IMG_Y1)         wants_down  = 1;   // unter dem Bild = rückwärts / Menü runter
-		else if (x < IMG_X0)         wants_left  = 1;   // links vom Bild = links drehen
-		else if (x > IMG_X1)         wants_right = 1;   // rechts vom Bild = rechts drehen
-		else                         wants_fire  = 1;   // Bildmitte = Feuer
+		else if (y >= RIGHT_START)                      // RIGHT strip = function keys
+		{
+			if (x < FN_FIRE_END)        wants_fire = 1;  //   top    = Feuer
+			else if (x < FN_USE_END)    wants_use  = 1;  //   middle = USE (Türen / Menü-Enter)
+			else                        wants_menu = 1;  //   bottom = MENU (Escape)
+		}
+		else                            wants_fire = 1;  // Bildband: tippen = Feuer
 	}
 
 	// 5. Events für Bewegung und Aktionen an DOOM senden.

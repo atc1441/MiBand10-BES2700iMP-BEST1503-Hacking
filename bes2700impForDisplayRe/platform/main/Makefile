@@ -11,6 +11,7 @@ else ifneq ($(SUBSYS_ONLY),1)
 obj-y += startup_main.S
 obj-y += dbg_boot_cp.c
 obj-y += hw_selftest.c
+obj-y += disp_hwquad.c
 ifeq ($(NO_STARTFILES),1)
 AFLAGS_startup_main.o += -D__NO_STARTFILES__
 endif
